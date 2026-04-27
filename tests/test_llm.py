@@ -1,20 +1,23 @@
-import asyncio
+import pytest
 import os
 import sys
-
 from dotenv import load_dotenv
+
 load_dotenv()
 
+# Add project root to path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from app.core.pattern_engine import Signal
 from app.services.llm_service import stream_coaching
 
-async def main():
+@pytest.mark.asyncio
+async def test_stream_coaching():
+    """
+    Integration test for the LLM streaming service.
+    """
     if not os.getenv("GROQ_API_KEY"):
-        print("⚠️ Warning: GROQ_API_KEY is not found in the environment variables.")
-        print("Make sure you add it to your .env file!")
-        return
+        pytest.skip("GROQ_API_KEY not found in environment. Skipping LLM integration test.")
 
     # Mocking some input data for the LLM
     mock_signals = [
@@ -31,18 +34,14 @@ async def main():
         ]
     }
     
-    print("🚀 Sending prompt to Groq (streaming response)...\n")
-    print("-" * 50)
-    
+    chunks_received = 0
     try:
-        # We iterate over the async generator
+        # Iterate over the async generator
         async for chunk in stream_coaching(mock_signals, mock_context):
-            print(chunk, end='', flush=True)
+            assert isinstance(chunk, str)
+            chunks_received += 1
             
-        print("\n\n✅ Groq streaming finished successfully.")
+        assert chunks_received > 0, "No chunks were received from the streaming service"
+        
     except Exception as e:
-        print(f"\n\n❌ Error during streaming: {e}")
-        print("\nCheck if your GROQ_API_KEY is correct!")
-
-if __name__ == "__main__":
-    asyncio.run(main())
+        pytest.fail(f"LLM Streaming failed: {e}")

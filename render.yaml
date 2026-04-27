@@ -1,0 +1,30 @@
+services:
+  # Managed PostgreSQL Database
+  - type: postgres
+    name: trading-coach-db
+    databaseName: trading_coach
+    user: trading_admin
+    plan: free # Use 'standard' if pgvector extensions require it on Render
+    region: singapore # Adjust to your preference
+    postgresMajorVersion: 16
+
+  # The FastAPI Application
+  - type: web
+    name: trading-coach-api
+    env: docker
+    dockerfilePath: docker/Dockerfile
+    dockerContext: .
+    plan: free
+    region: singapore
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: trading-coach-db
+          attribute: connectionString
+      - key: GROQ_API_KEY
+        sync: false # Set this in the Render Dashboard securely
+      - key: JWT_SECRET
+        generateValue: true # Generates a random secret for JWT
+      - key: PYTHONUNBUFFERED
+        value: "1"

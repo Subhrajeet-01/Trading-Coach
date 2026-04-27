@@ -8,11 +8,11 @@ from app.services import session_service
 
 router = APIRouter(tags=["session"])
 
-@router.post("/session/events")
+@router.post("/session/events", response_model=None)
 async def session_events(
     body: SessionEventsRequest,
     current_user: dict = Depends(get_current_user)
-) -> StreamingResponse | dict:
+) -> StreamingResponse:
     """Streams token-by-token behavioral coaching based on live trade events."""
     if body.userId != current_user["sub"]:
         raise HTTPException(403, detail={"error":"FORBIDDEN",

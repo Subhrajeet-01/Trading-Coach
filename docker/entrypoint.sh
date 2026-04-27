@@ -1,5 +1,11 @@
 #!/bin/bash
 set -e
 
-echo "Starting application with Uvicorn..."
-exec /app/.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000
+# Run the seeding and schema initialization script using the venv python
+echo "🔧 Running DB initialization and seeding..."
+/app/.venv/bin/python scripts/seed_db.py
+
+# Launch the application using the venv uvicorn
+# Render provides the PORT environment variable.
+echo "🚀 Starting application on port ${PORT:-8000}..."
+exec /app/.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}
