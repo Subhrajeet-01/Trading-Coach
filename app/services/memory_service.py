@@ -3,7 +3,7 @@ from typing import Optional
 from app.db.repository import (
     upsert_session, fetch_sessions_for_user,
     fetch_raw_session, session_exists, fetch_patterns_for_user,
-    upsert_trade
+    upsert_trade, identifier_exists
 )
 
 async def store(user_id: str, session_id: str, summary: str, metrics: dict, tags: list[str], raw_trades: list[dict]) -> None:
@@ -46,8 +46,8 @@ async def get_raw(user_id: str, session_id: str) -> Optional[dict]:
     """
     return await fetch_raw_session(user_id, session_id)
 
-async def exists(user_id: str, session_id: str) -> bool:
+async def exists(user_id: str, identifier: str) -> bool:
     """
-    Check if a specific session ID exists in the database.
+    Check if a specific session or trade ID exists in the database.
     """
-    return await session_exists(user_id, session_id)
+    return await identifier_exists(user_id, identifier)

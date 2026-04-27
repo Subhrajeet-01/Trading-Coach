@@ -108,6 +108,22 @@ async def session_exists(user_id: str, session_id: str) -> bool:
     row = await pool.fetchrow("SELECT 1 FROM session_summaries WHERE user_id=$1 AND session_id=$2", UUID(str(user_id)), UUID(str(session_id)))
     return row is not None
 
+async def identifier_exists(user_id: str, identifier: str) -> bool:
+    """Checks if an ID exists in either session_summaries or trades."""
+    pool = await get_pool()
+    try:
+        uid = UUID(str(identifier))
+    except (ValueError, TypeError):
+        return False
+        
+    # Check session
+    s = await pool.fetchrow("SELECT 1 FROM session_summaries WHERE user_id=$1 AND session_id=$2", UUID(str(user_id)), uid)
+    if s: return True
+    
+    # Check trade
+    t = await pool.fetchrow("SELECT 1 FROM trades WHERE user_id=$1 AND id=$2", UUID(str(user_id)), uid)
+    return t is not None
+
 async def upsert_pattern(user_id: str, pattern_id: str, session_ids: list[str], trade_ids: list[str], confidence: float) -> None:
     pool = await get_pool()
     await pool.execute("""
