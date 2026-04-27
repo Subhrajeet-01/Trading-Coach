@@ -1,0 +1,41 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: trading-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: nevup
+      POSTGRES_PASSWORD: nevup
+      POSTGRES_DB: nevup
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nevup -d nevup"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: trading-api
+    restart: always
+    env_file:
+      - .env
+    environment:
+      # Override DB URL to point to Docker service hostname
+      - DATABASE_URL=postgresql+asyncpg://nevup:nevup@postgres:5432/nevup
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres_data:

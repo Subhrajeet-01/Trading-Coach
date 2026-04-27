@@ -1,0 +1,179 @@
+{
+  "revenge_trading": {
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1-score": 1.0,
+    "support": 1.0
+  },
+  "overtrading": {
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1-score": 1.0,
+    "support": 1.0
+  },
+  "fomo_entries": {
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1-score": 1.0,
+    "support": 1.0
+  },
+  "plan_non_adherence": {
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1-score": 1.0,
+    "support": 1.0
+  },
+  "premature_exit": {
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1-score": 1.0,
+    "support": 1.0
+  },
+  "loss_running": {
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1-score": 1.0,
+    "support": 1.0
+  },
+  "session_tilt": {
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1-score": 1.0,
+    "support": 1.0
+  },
+  "time_of_day_bias": {
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1-score": 1.0,
+    "support": 1.0
+  },
+  "position_sizing_inconsistency": {
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1-score": 1.0,
+    "support": 1.0
+  },
+  "micro avg": {
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1-score": 1.0,
+    "support": 9.0
+  },
+  "macro avg": {
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1-score": 1.0,
+    "support": 9.0
+  },
+  "weighted avg": {
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1-score": 1.0,
+    "support": 9.0
+  },
+  "samples avg": {
+    "precision": 0.9,
+    "recall": 0.9,
+    "f1-score": 0.9,
+    "support": 9.0
+  },
+  "trader_results": [
+    {
+      "name": "Alex Mercer",
+      "true": [
+        "revenge_trading"
+      ],
+      "predicted": [
+        "revenge_trading"
+      ],
+      "correct": true
+    },
+    {
+      "name": "Jordan Lee",
+      "true": [
+        "overtrading"
+      ],
+      "predicted": [
+        "overtrading"
+      ],
+      "correct": true
+    },
+    {
+      "name": "Sam Rivera",
+      "true": [
+        "fomo_entries"
+      ],
+      "predicted": [
+        "fomo_entries"
+      ],
+      "correct": true
+    },
+    {
+      "name": "Casey Kim",
+      "true": [
+        "plan_non_adherence"
+      ],
+      "predicted": [
+        "plan_non_adherence"
+      ],
+      "correct": true
+    },
+    {
+      "name": "Morgan Bell",
+      "true": [
+        "premature_exit"
+      ],
+      "predicted": [
+        "premature_exit"
+      ],
+      "correct": true
+    },
+    {
+      "name": "Taylor Grant",
+      "true": [
+        "loss_running"
+      ],
+      "predicted": [
+        "loss_running"
+      ],
+      "correct": true
+    },
+    {
+      "name": "Riley Stone",
+      "true": [
+        "session_tilt"
+      ],
+      "predicted": [
+        "session_tilt"
+      ],
+      "correct": true
+    },
+    {
+      "name": "Drew Patel",
+      "true": [
+        "time_of_day_bias"
+      ],
+      "predicted": [
+        "time_of_day_bias"
+      ],
+      "correct": true
+    },
+    {
+      "name": "Quinn Torres",
+      "true": [
+        "position_sizing_inconsistency"
+      ],
+      "predicted": [
+        "position_sizing_inconsistency"
+      ],
+      "correct": true
+    },
+    {
+      "name": "Avery Chen",
+      "true": [],
+      "predicted": [],
+      "correct": true
+    }
+  ],
+  "exact_match_accuracy": 1.0
+}
