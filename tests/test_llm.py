@@ -30,7 +30,7 @@ async def test_stream_coaching():
     
     mock_context = {
         "sessions": [
-            {"session_id": "s001", "summary": "Chased losses on tech stocks, displaying emotional attachment."}
+            {"sessionId": "s001", "notes": "Chased losses on tech stocks, displaying emotional attachment."}
         ]
     }
     

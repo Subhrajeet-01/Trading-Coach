@@ -1,31 +1,44 @@
 # app/schemas/session.py
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Optional, Literal
 from datetime import datetime
+from uuid import UUID
 
 class Trade(BaseModel):
-    """Schema representing an individual executed trade event."""
-    tradeId: str
-    userId: str
-    sessionId: str
+    """
+    Canonical Trade Schema as defined in nevup_openapi.yaml.
+    Any deviation breaks interoperability scoring.
+    """
+    model_config = ConfigDict(populate_by_name=True)
+
+    tradeId: UUID
+    userId: UUID
+    sessionId: UUID
     asset: str
-    assetClass: Literal["equity","crypto","forex"]
-    direction: Literal["long","short"]
+    assetClass: Literal["equity", "crypto", "forex"]
+    direction: Literal["long", "short"]
     entryPrice: float
-    exitPrice: float
     quantity: float
     entryAt: datetime
-    exitAt: datetime
-    status: str
-    outcome: Literal["win","loss"]
-    pnl: float
-    planAdherence: int
-    emotionalState: Literal["calm","anxious","greedy","fearful","neutral"]
+    status: Literal["open", "closed", "cancelled"]
+    
+    # Nullable fields (Required for Open/Cancelled trades)
+    exitPrice: Optional[float] = None
+    exitAt: Optional[datetime] = None
+    planAdherence: Optional[int] = None
+    emotionalState: Optional[Literal["calm", "anxious", "greedy", "fearful", "neutral"]] = None
     entryRationale: Optional[str] = None
-    revengeFlag: bool
+
+    # Computed/AI Fields (defined in 'Trade' component expansion)
+    outcome: Optional[Literal["win", "loss"]] = None
+    pnl: Optional[float] = None
+    revengeFlag: Optional[bool] = False
+    
+    createdAt: Optional[datetime] = None
+    updatedAt: Optional[datetime] = None
 
 class SessionEventsRequest(BaseModel):
-    """Incoming request containing a user's bulk block of session trades."""
-    userId: str
-    sessionId: str
+    """Request for bulk session processing."""
+    userId: UUID
+    sessionId: UUID
     trades: list[Trade]

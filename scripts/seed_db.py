@@ -4,27 +4,12 @@ from dotenv import load_dotenv
 load_dotenv()
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-from app.db.repository import get_pool, upsert_session, upsert_pattern
+from app.db.repository import get_pool, upsert_session, upsert_pattern, upsert_trade
 from app.schemas.session import Trade
 from app.core.pattern_engine import detect_all
 
 SEED_PATH = os.path.join(os.path.dirname(__file__), "../data/nevup_seed_dataset.json")
 INIT_SQL_PATH = os.path.join(os.path.dirname(__file__), "../init.sql")
-
-def compute_metrics(session: dict) -> dict:
-    trades = session["trades"]
-    wins = [t for t in trades if t["outcome"] == "win"]
-    ed = {}
-    for t in trades:
-        ed[t["emotionalState"]] = ed.get(t["emotionalState"], 0) + 1
-    return {
-        "winRate":             round(len(wins)/len(trades), 3) if trades else 0,
-        "avgPlanAdherence":    round(sum(t["planAdherence"] for t in trades)/len(trades),2) if trades else 0,
-        "revengeTradeCount":   sum(1 for t in trades if t.get("revengeFlag")),
-        "totalPnl":            session.get("totalPnl", 0),
-        "tradeCount":          len(trades),
-        "emotionalStateDistribution": ed,
-    }
 
 async def init_schema():
     print("Checking database schema...")
@@ -36,8 +21,6 @@ async def init_schema():
     with open(INIT_SQL_PATH) as f:
         sql = f.read()
     
-    # Execute init.sql line by line or as a block
-    # Note: asyncpg execute can run multiple statements
     try:
         await pool.execute(sql)
         print("Schema initialized successfully.")
@@ -61,24 +44,33 @@ async def seed():
 
     for trader in dataset["traders"]:
         uid = trader["userId"]
-        all_trades = [Trade(**t)
-            for s in trader["sessions"] for t in s["trades"]]
-        signals = detect_all(all_trades)
+        
+        # Collect all trades for pattern detection
+        all_trader_trades = []
+        for session in trader["sessions"]:
+            for t_data in session["trades"]:
+                all_trader_trades.append(Trade(**t_data))
+
+        # Detect patterns across full history
+        signals = detect_all(all_trader_trades)
 
         for session in trader["sessions"]:
-            metrics = compute_metrics(session)
-            pathology_tags = [s.pathology for s in signals]
-            summary = (
-                f"Session {session['date'][:10]} | "
-                f"trades={session['tradeCount']} pnl={session['totalPnl']} "
-                f"winRate={session['winRate']} | "
-                f"pathologies={','.join(pathology_tags) or 'none'}"
-            )
+            # 1. Seed Individual Trades
+            for t_data in session["trades"]:
+                await upsert_trade(t_data)
+            
+            # 2. Seed Session Summary
+            notes = f"Seed session from {session['date'][:10]}."
             await upsert_session(
-                uid, session["sessionId"], summary,
-                metrics, pathology_tags, session["trades"]
+                user_id=uid,
+                session_id=session["sessionId"],
+                notes=notes,
+                trade_count=session["tradeCount"],
+                win_rate=session["winRate"],
+                total_pnl=session["totalPnl"]
             )
 
+        # 3. Seed Detected Patterns (Memory)
         for s in signals:
             try:
                 await upsert_pattern(
@@ -88,12 +80,9 @@ async def seed():
                     s.confidence
                 )
             except Exception as e:
-                # In case of duplicates or other issues in patterns
                 print(f"Skipping pattern {s.pathology} for {uid}: {e}")
 
-        print(f"Seeded {trader['name']}: "
-              f"{len(trader['sessions'])} sessions, "
-              f"signals={[s.pathology for s in signals]}")
+        print(f"Seeded {trader['name']}: {len(trader['sessions'])} sessions")
 
     print("Seed complete.")
 

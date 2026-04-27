@@ -19,7 +19,7 @@ def get_current_user(
 
 def enforce_tenancy(user_id: str, current_user: dict) -> dict:
     """Ensures the authenticated user is only accessing their own nested resources."""
-    if current_user["sub"] != user_id:
+    if str(current_user["sub"]) != str(user_id):
         raise HTTPException(403, detail={
             "error":"FORBIDDEN",
             "message":"Cross-tenant access denied.",

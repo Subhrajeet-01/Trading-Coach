@@ -13,7 +13,7 @@ def _get_client():
 
 def _system_prompt(signals: list[Signal], context: dict) -> str:
     session_block = "\n".join(
-        f"  - sessionId {s['session_id']}: {str(s.get('summary',''))[:180]}"
+        f"  - sessionId {s['sessionId']}: {str(s.get('notes',''))[:180]}"
         for s in context.get("sessions", [])
     ) or "  No prior sessions stored."
 

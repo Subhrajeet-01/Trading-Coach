@@ -25,6 +25,6 @@ services:
       - key: GROQ_API_KEY
         sync: false # Set this in the Render Dashboard securely
       - key: JWT_SECRET
-        generateValue: true # Generates a random secret for JWT
+        sync: false # Set this to the exact value from your .env file
       - key: PYTHONUNBUFFERED
         value: "1"

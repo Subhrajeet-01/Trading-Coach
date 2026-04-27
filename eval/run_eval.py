@@ -27,9 +27,9 @@ for trader in dataset["traders"]:
     headers = {"Authorization": f"Bearer {token}"}
 
     all_trades = [t for s in trader["sessions"] for t in s["trades"]]
-    profile_resp = requests.post(f"{BASE_URL}/profile/{uid}",
-        json={"trades": all_trades}, headers=headers)
-    predicted = profile_resp.json().get("detectedPathologies", [])
+    profile_resp = requests.get(f"{BASE_URL}/users/{uid}/profile", headers=headers)
+    profile_data = profile_resp.json()
+    predicted = [p["pathology"] for p in profile_data.get("dominantPathologies", [])]
 
     gt = dataset["groundTruthLabels"]
     true_labels = next(g["pathologies"] for g in gt if g["userId"] == uid)
