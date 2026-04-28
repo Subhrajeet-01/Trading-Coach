@@ -1,226 +1,64 @@
-# DECISIONS.md
+# Architectural Decisions & Design Patterns
 
-## Project Goal
+Hey team, 
 
-This project builds a **stateful trading psychology coach** that:
+This document outlines the core architectural patterns and design decisions we've adopted for the Trading Psychology Coach. The goal here isn't just to build an app, but to build a robust, reproducible, and verifiable system that provides stateful coaching while strictly avoiding LLM hallucinations. Here's a breakdown of how we've structured the system and *why*.
 
-- stores session memory persistently
-- retrieves prior sessions for context
-- explains coaching decisions with evidence
-- detects behavioral patterns from structured trade data
-- supports a reproducible evaluation harness
+## Layered Backend Architecture
 
-The system is designed as **infrastructure**.
+We've opted for a strictly **Layered Architecture** to keep the separation of concerns crystal clear. If you look at the codebase, you'll see:
+- `api/`: Our presentation layer. Just HTTP routes, request validation, and response serialization.
+- `services/`: The orchestration layer. This ties together our business logic, database calls, and core engines.
+- `core/`: The heart of the system. This holds pure, deterministic business logic.
+- `db/`: The data access layer, handling persistent storage and query logic.
+- `auth/`: Centralized authentication and authorization.
+- `eval/`: Offline evaluation scripts and harnesses.
 
----
+This modularity ensures that our core domain logic remains isolated from the specific web framework (FastAPI) or database driver we're using.
 
-## 1. Architecture Choice
+## Storage and Memory Model
 
-### Decision
-Use a layered backend architecture:
+### Relational Persistence (PostgreSQL)
+For persistence, we went with **PostgreSQL**. The coaching memory has to survive container restarts, ruling out simple in-memory stores. Moreover, because we need to run complex, structured queries across historical trades, sessions, and detected patterns, a robust relational database is the right tool for the job.
 
-- `api/` for HTTP routes
-- `services/` for orchestration
-- `core/` for deterministic logic
-- `db/` for persistence
-- `auth/` for JWT validation
-- `eval/` for offline evaluation
+### Structured Memory Summaries
+Instead of letting an LLM blindly summarize past sessions into a raw text blob, we use a **Structured Memory Model**. We store sessions as structured summaries, complete with computed metrics, tags, and references to the exact raw session records. This structure is critical for exact retrieval and allows us to definitively point to *why* a particular coaching message was generated.
 
----
+## The Detection Engine: Deterministic over Generative
 
-## 2. Storage Choice
+When it comes to analyzing user behavior, we made a hard rule: **LLMs do not diagnose**. 
 
-### Decision
-Use **PostgreSQL** for persistent storage.
+### Rule-Based Pattern Detection
+We employ **Deterministic Pattern Detection** using rule-based feature engineering to identify behavioral pathologies. By calculating concrete features (like revenge trade counts, emotional instability, rapid re-entries, and average plan adherence) directly from raw trade data, we ensure our diagnostics are reproducible, auditable, and easily evaluable against ground truth.
 
-### Rationale
-The memory store must survive container restarts. An in-memory store would be lost on restart and would fail the persistence requirement. PostgreSQL provides durable storage and supports structured queries for sessions, trades, summaries, and detected patterns.
+### Evidence-Backed Claims
+Every behavioral claim the system makes must provide receipts. It must include both a `sessionId` and a `tradeId`. This completely eliminates generic advice and hallucinated claims; every insight is traceable back to the source data. The LLM is strictly relegated to the presentation layer—it's meant to handle the wording, empathy, and coaching tone, but the actual reasoning comes from our deterministic `core/` engine.
 
----
+## Security & Isolation
 
-## 3. Memory Model
+### JWT-based Multi-Tenancy Architecture
+We are using JWT authentication (HS256) to ensure strict tenant isolation. Because this system deals with sensitive financial and psychological data, our golden rule is: `if jwt.sub !== requestedUserId`, it returns an immediate HTTP `403 Forbidden`. 
+We've also standardized our error responses to ensure security audits always see standard codes (`401` for bad tokens, `403` for cross-tenant access).
 
-### Decision
-Store memory as **structured session summaries** with metrics and tags, and keep raw session records retrievable by exact ID.
+## Operational & API Patterns
 
-### Rationale
-The evaluation requires:
-- exact retrieval of stored sessions
-- traceable references to sessions and trades
+### The Anti-Hallucination Audit Pattern
+We've introduced a dedicated `/audit` endpoint as a safety net. This allows external reviewers to programmatically verify that any referenced session IDs in the coaching messages actually exist in the database. It's a clean separation between the generation of insights and their verification.
 
-Structured storage makes it possible to explain why a coaching message was generated.
+### Server-Sent Events (SSE) for Streaming
+To ensure a snappy user experience and fast initial response times, we are utilizing **Server-Sent Events (SSE)**. It's a perfect architectural fit for streaming token-by-token coaching messages one-way from the server to the client without the overhead of WebSockets.
 
----
+## Reproducibility & Deployment
 
-## 4. Deterministic Pattern Detection
+We treat the seed dataset (`nevup_seed_dataset.json`) as strictly read-only to guarantee consistent evaluation results. For the reproducible evaluation harness, we have a deterministic pipeline that loads data, computes features, detects patterns, aggregates predictions, and generates F1 scores cleanly.
 
-### Decision
-Use rule-based feature engineering and pattern detection for behavioral pathologies.
-
-### Rationale
-The seed dataset is structured and labeled. Deterministic rules are preferable because they are:
-- reproducible
-- explainable
-- auditable
-- suitable for evaluation against ground truth
-
-This reduces the risk of hallucinated behavioral claims.
+On the dev-ops side:
+- **Dependency Management:** We're standardizing on `uv` for blazing fast, lockfile-based installs.
+- **Containerization:** We rely on Docker Compose to spin up the entire API, evaluation harness, and PostgreSQL database synchronously, without any manual setup steps required.
 
 ---
 
-## 5. Feature Engineering
+### In Summary
 
-### Decision
-Compute session-level features from the trade history, such as:
-- revenge trade count
-- average plan adherence
-- emotional instability
-- quick re-entry after loss
-- trade frequency
-- loss streaks
-
-### Rationale
-These features create a bridge between raw trades and pathology labels. They also provide evidence that can be tied back to specific trades.
-
----
-
-## 6. Evidence-Backed Claims
-
-### Decision
-Every behavioral claim must include evidence in the form of:
-- `sessionId`
-- `tradeId`
-
-### Rationale
-The system must not make generic claims. Every coaching explanation must be traceable to the source data so the reviewer can verify it.
-
----
-
-## 7. Coaching Generation
-
-### Decision
-Use the LLM only for wording and coaching tone, not for behavioral reasoning.
-
----
-
-## 8. Anti-Hallucination Audit
-
-### Decision
-Provide a dedicated `/audit` endpoint that checks whether referenced session IDs exist in the database.
-
-### Rationale
-The reviewer must be able to verify that the coaching message references real sessions. The audit layer separates generation from verification.
-
----
-
-## 9. Authentication
-
-### Decision
-Use JWT authentication with HS256.
-
-### Rationale
-The challenge requires a shared token format across tracks. The authenticated user ID in the token must match the requested user ID in every data access path.
-
-### Enforcement Rule
-If `jwt.sub !== requestedUserId`, return HTTP 403.
-
----
-
-## 10. Error Handling
-
-### Decision
-Use standard response codes:
-
-- `401` for missing, invalid, malformed, or expired tokens
-- `403` for cross-tenant access attempts
-
-### Rationale
-The evaluation explicitly checks that user A cannot access user B’s data. Returning `404` instead of `403` would be incorrect.
-
----
-
-## 11. Streaming Responses
-
-### Decision
-Use Server-Sent Events for streaming coaching messages.
-
-### Rationale
-The requirement asks for token-by-token streaming and fast initial response. SSE is a simple fit for one-way streaming and works well with FastAPI.
-
----
-
-## 12. Evaluation Harness
-
-### Decision
-Build a reproducible evaluation script that:
-- loads the seed dataset
-- computes features
-- detects patterns
-- aggregates predictions at user level
-- generates precision, recall, and F1 per class
-
-### Rationale
-The evaluation must be reproducible from the exact provided dataset. A deterministic script is easier to validate than a model-dependent pipeline.
-
----
-
-## 13. Dependency Management
-
-### Decision
-Use `uv` for dependency management and execution.
-
-### Rationale
-The project should be reproducible and easy to install. `uv` provides a lockfile-based workflow and faster installs than traditional pip workflows.
-
----
-
-## 14. Docker Strategy
-
-### Decision
-Use Docker Compose to start the full stack with a single command.
-
-### Rationale
-The submission requires the system to start without manual steps. Docker Compose is the simplest way to package the API and database together.
-
----
-
-## 15. Seed Data Handling
-
-### Decision
-Treat `nevup_seed_dataset.json` as read-only input.
-
-### Rationale
-The evaluation depends on the exact dataset. Modifying or regenerating it would break reproducibility and make results unreliable.
-
----
-
-## 16. Project Structure
-
-### Decision
-Keep the following top-level layout:
-
-- `app/` for application code
-- `data/` for the seed dataset
-- `eval/` for the evaluation harness
-- `scripts/` for utility scripts
-- `tests/` for automated checks
-- `docker/` for container files
-
-### Rationale
-This keeps implementation, evaluation, and deployment separated and easy to understand.
-
----
-
-## 17. Final System Principle
-
-The system follows this rule:
-
-**All behavioral claims must be grounded in stored evidence.**
-
-That means:
-- no invented sessions
-- no invented trades
-- no unsupported psychological claims
-- no cross-user data leakage
-
-The system must be explainable, persistent, and reproducible.
+Our guiding principle is simple: **All behavioral claims must be grounded in stored evidence.** 
+No invented sessions. No hallucinated trades. No unsupported psychology. We are building a system that is as explainable and reproducible as it is intelligent.
